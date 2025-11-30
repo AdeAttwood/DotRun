@@ -2,7 +2,7 @@ namespace DotRun;
 
 public class DotRunBuilder
 {
-    private List<TaskItem> _tasks = new();
+    private readonly List<TaskItem> _tasks = new();
 
     public IReadOnlyList<TaskItem> Tasks => _tasks.AsReadOnly();
 
