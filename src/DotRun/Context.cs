@@ -7,7 +7,7 @@ public class Context
 {
     public ConcurrentDictionary<string, object> Data { get; } = new();
 
-    public Task<string> Shell(string command, string args)
+    public async Task<string> Shell(string command, string args)
     {
         using Process process = new Process
         {
@@ -22,24 +22,34 @@ public class Context
         };
 
         process.Start();
-        process.WaitForExit();
+
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        await Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync());
+
+        var output = (await outputTask).Trim();
+        var error = (await errorTask).Trim();
 
         if (process.ExitCode != 0)
         {
+            var stdoutLabel = string.IsNullOrWhiteSpace(output) ? "(EMPTY)" : output;
+            var stderrLabel = string.IsNullOrWhiteSpace(error) ? "(EMPTY)" : error;
+
             throw new Exception($"""
             Command '{command} {args}' failed with exit code {process.ExitCode}
 
             STDOUT:
 
-            {process.StandardOutput.ReadToEnd().Trim() ?? "(EMPTY)"}
+            {stdoutLabel}
 
             STDERR:
 
-            {process.StandardError.ReadToEnd().Trim() ?? "(EMPTY)"}
+            {stderrLabel}
             """);
         }
 
-        return Task.FromResult(process.StandardOutput.ReadToEnd().Trim());
+        return output;
     }
 
     public void WriteFile(string path, string content)
